@@ -31,12 +31,6 @@ if os.path.dirname(os.path.abspath(__file__))[0:4] == '/usr':
 else:
 	import version
 
-class CheckListCtrl(wx.ListCtrl, CheckListCtrlMixin, ListCtrlAutoWidthMixin):
-	def __init__(self, parent, height):
-		wx.ListCtrl.__init__(self, parent, -1, style=wx.LC_REPORT | wx.SUNKEN_BORDER, size=(650, height))
-		CheckListCtrlMixin.__init__(self)
-		ListCtrlAutoWidthMixin.__init__(self)
-
 class MyFrame(wx.Frame):
 	def __init__(self):
 		self.conf = conf.Conf()
@@ -168,6 +162,12 @@ class MyFrame(wx.Frame):
 
 	def ShowStatusBarGREEN(self, w_msg):
 		self.ShowStatusBar(w_msg, (0,130,0))
+
+	def ShowStatusBarGREENfade(self, w_msg):
+		self.ShowStatusBar(w_msg, (0,130,0))
+		self.OnRefreshButton()
+		time.sleep(1)
+		self.ShowStatusBar("", wx.BLACK) 
 
 	def ShowStatusBarBLACK(self, w_msg):
 		self.ShowStatusBar(w_msg, wx.BLACK) 
@@ -327,7 +327,8 @@ class MyFrame(wx.Frame):
 		self.aStatusList = [_('inactive'),_('active')]
 		self.bStatusList = [_('dead'),_('running')] 
 
-		self.listSystemd = CheckListCtrl(self.systemd, 152)
+		#self.listSystemd = CheckListCtrl(self.systemd, 152)
+		self.listSystemd = wx.ListCtrl(self.systemd, 152, style=wx.LC_REPORT | wx.LC_SINGLE_SEL)
 		self.listSystemd.InsertColumn(0, _('Autostart'), width=90)
 		self.listSystemd.InsertColumn(1, _('App'), width=90)
 		self.listSystemd.InsertColumn(2, _('Process'), width=140)
@@ -336,6 +337,9 @@ class MyFrame(wx.Frame):
 		self.listSystemd.Bind(wx.EVT_LIST_ITEM_SELECTED, self.onListSystemdSelected)
 		self.listSystemd.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.onListSystemdDeselected)
 		self.listSystemd.SetTextColour(wx.BLACK)
+		self.listSystemd.EnableCheckBoxes(True)
+		self.listSystemd.Bind(wx.EVT_LIST_ITEM_CHECKED, self.OnCheckItem)
+		self.listSystemd.Bind(wx.EVT_LIST_ITEM_UNCHECKED, self.OnUnCheckItem)
 
 		self.listSystemd.OnCheckItem = self.OnCheckItem
 
@@ -412,7 +416,7 @@ class MyFrame(wx.Frame):
 		subprocess.call((self.platform.admin + ' systemctl start ' + self.listSystemd.GetItemText(index, 2)).split())
 		time.sleep(1)
 		self.OnRefreshButton()
-		self.ShowStatusBarGREEN(_('Done'))
+		self.ShowStatusBarGREENfade(_('Done'))
 
 	def onStop(self,e):
 		index = self.listSystemd.GetFirstSelected()
@@ -420,8 +424,7 @@ class MyFrame(wx.Frame):
 		self.ShowStatusBarYELLOW(_('Stopping process...'))
 		subprocess.call((self.platform.admin + ' systemctl stop ' + self.listSystemd.GetItemText(index, 2)).split())
 		time.sleep(1)
-		self.OnRefreshButton()
-		self.ShowStatusBarGREEN(_('Done'))
+		self.ShowStatusBarGREENfade(_('Done'))
 
 	def onRestart(self,e):
 		index = self.listSystemd.GetFirstSelected()
@@ -429,18 +432,23 @@ class MyFrame(wx.Frame):
 		self.ShowStatusBarYELLOW(_('Restarting process...'))
 		subprocess.call((self.platform.admin + ' systemctl restart ' + self.listSystemd.GetItemText(index, 2)).split())
 		time.sleep(1)
-		self.OnRefreshButton()
-		self.ShowStatusBarGREEN(_('Done'))
+		self.ShowStatusBarGREENfade(_('Done'))
 		
-	def OnCheckItem(self, index, flag):
+	def OnCheckItem(self, index):
 		if not self.started: return
-		self.ShowStatusBarYELLOW(_('Enabling/Disabling process...'))
-		if flag:
-			subprocess.call((self.platform.admin + ' systemctl enable ' + self.listSystemd.GetItemText(index, 2)).split())
-		else:
-			subprocess.call((self.platform.admin + ' systemctl disable ' + self.listSystemd.GetItemText(index, 2)).split())
-		self.OnRefreshButton()
-		self.ShowStatusBarGREEN(_('Done'))
+		self.ShowStatusBarYELLOW(_('Enabling process...'))
+		i = index.GetIndex()
+		subprocess.call((self.platform.admin + ' systemctl enable ' + self.listSystemd.GetItemText(i, 2)).split())
+		time.sleep(1)
+		self.ShowStatusBarGREENfade(_('Done'))
+
+	def OnUnCheckItem(self, index):
+		if not self.started: return
+		self.ShowStatusBarYELLOW(_('Disabling process...'))
+		i = index.GetIndex()
+		subprocess.call((self.platform.admin + ' systemctl disable ' + self.listSystemd.GetItemText(i, 2)).split())
+		time.sleep(1)
+		self.ShowStatusBarGREENfade(_('Done'))
 
 ################################################################################
 
